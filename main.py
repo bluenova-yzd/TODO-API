@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from database import (
-    get_connection,
     create_table,
     get_all_todos,
     create_todo,
@@ -11,7 +11,14 @@ from database import (
 )
 
 app = FastAPI()
-# Git değişiklik testi
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 create_table()
 

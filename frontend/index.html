@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List</title>
+</head>
+<body>
+
+    <h1>📝 Todo List</h1>
+
+    <input type="text" id="todoInput" placeholder="Yeni görev yaz...">
+    <button id="addButton">Ekle</button>
+
+    <ul id="todoList"></ul>
+
+    <script>
+        const API_URL = "https://todo-api-znqf.onrender.com";
+
+        const input = document.getElementById("todoInput");
+        const button = document.getElementById("addButton");
+        const list = document.getElementById("todoList");
+
+        async function loadTodos() {
+            const response = await fetch(`${API_URL}/todos`);
+            const todos = await response.json();
+
+            list.innerHTML = "";
+
+            todos.forEach(function (todo) {
+                const listItem = document.createElement("li");
+                listItem.textContent = todo.title;
+
+                list.appendChild(listItem);
+            });
+        }
+
+        async function addTodo() {
+            const text = input.value.trim();
+
+            if (text === "") {
+                return;
+            }
+
+            await fetch(`${API_URL}/todos`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    title: text,
+                    completed: false
+                })
+            });
+
+            input.value = "";
+
+            await loadTodos();
+        }
+
+        button.addEventListener("click", addTodo);
+
+        loadTodos();
+    </script>
+
+</body>
+</html>
