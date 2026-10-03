@@ -11,6 +11,7 @@ from database import (
 )
 
 app = FastAPI()
+# Git değişiklik testi
 
 create_table()
 
