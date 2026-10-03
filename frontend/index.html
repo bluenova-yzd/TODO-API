@@ -4,13 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Todo List</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .todo-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .todo-form input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        .todo-form button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        li span {
+            flex: 1;
+        }
+
+        li.completed span {
+            text-decoration: line-through;
+        }
+
+        .delete-button {
+            cursor: pointer;
+        }
+    </style>
 </head>
+
 <body>
 
     <h1>📝 Todo List</h1>
 
-    <input type="text" id="todoInput" placeholder="Yeni görev yaz...">
-    <button id="addButton">Ekle</button>
+    <div class="todo-form">
+        <input
+            type="text"
+            id="todoInput"
+            placeholder="Yeni görev yaz..."
+        >
+        <button id="addButton">Ekle</button>
+    </div>
 
     <ul id="todoList"></ul>
 
@@ -29,7 +91,48 @@
 
             todos.forEach(function (todo) {
                 const listItem = document.createElement("li");
-                listItem.textContent = todo.title;
+
+                if (todo.completed) {
+                    listItem.classList.add("completed");
+                }
+
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.checked = todo.completed;
+
+                checkbox.addEventListener("change", async function () {
+                    await fetch(`${API_URL}/todos/${todo.id}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            title: todo.title,
+                            completed: checkbox.checked
+                        })
+                    });
+
+                    await loadTodos();
+                });
+
+                const title = document.createElement("span");
+                title.textContent = todo.title;
+
+                const deleteButton = document.createElement("button");
+                deleteButton.textContent = "🗑️";
+                deleteButton.className = "delete-button";
+
+                deleteButton.addEventListener("click", async function () {
+                    await fetch(`${API_URL}/todos/${todo.id}`, {
+                        method: "DELETE"
+                    });
+
+                    await loadTodos();
+                });
+
+                listItem.appendChild(checkbox);
+                listItem.appendChild(title);
+                listItem.appendChild(deleteButton);
 
                 list.appendChild(listItem);
             });
