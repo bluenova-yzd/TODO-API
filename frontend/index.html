@@ -6,15 +6,41 @@
     <title>Todo List</title>
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
+            margin: 0;
+            min-height: 100vh;
             font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 60px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 650px;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
         }
 
         h1 {
             text-align: center;
+            margin: 0 0 8px;
+            color: #222;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #777;
+            margin-bottom: 30px;
         }
 
         .todo-form {
@@ -25,127 +51,452 @@
 
         .todo-form input {
             flex: 1;
-            padding: 10px;
+            padding: 14px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
             font-size: 16px;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        .todo-form input:focus {
+            border-color: #667eea;
         }
 
         .todo-form button {
-            padding: 10px 20px;
+            padding: 14px 22px;
+            border: none;
+            border-radius: 12px;
+            background: #667eea;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
             cursor: pointer;
+        }
+
+        .todo-form button:hover {
+            background: #5568d9;
+        }
+
+        .todo-form button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #statusMessage {
+            display: none;
+            text-align: center;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        #statusMessage.loading {
+            display: block;
+            background: #eef2ff;
+            color: #4f46e5;
+        }
+
+        #statusMessage.error {
+            display: block;
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        #statusMessage.success {
+            display: block;
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        #todoStats {
+            margin-bottom: 15px;
+            color: #666;
+            font-size: 14px;
+            font-weight: bold;
         }
 
         ul {
             list-style: none;
             padding: 0;
+            margin: 0;
         }
 
         li {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fc;
+            border: 1px solid #eceef5;
+            border-radius: 12px;
+        }
+
+        li input[type="checkbox"] {
+            width: 19px;
+            height: 19px;
+            cursor: pointer;
+            accent-color: #667eea;
         }
 
         li span {
             flex: 1;
+            color: #333;
+            font-size: 16px;
+            word-break: break-word;
         }
 
         li.completed span {
             text-decoration: line-through;
+            color: #999;
         }
 
+        .edit-button,
         .delete-button {
+            border: none;
+            background: transparent;
+            font-size: 18px;
             cursor: pointer;
+            padding: 6px;
+            border-radius: 8px;
+        }
+
+        .edit-button:hover {
+            background: #e0e7ff;
+        }
+
+        .delete-button:hover {
+            background: #ffe5e5;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 20px 12px;
+            }
+
+            .container {
+                padding: 22px;
+            }
+
+            h1 {
+                font-size: 26px;
+            }
+
+            .todo-form {
+                flex-direction: column;
+            }
+
+            .todo-form button {
+                width: 100%;
+            }
         }
     </style>
 </head>
 
 <body>
 
+<div class="container">
+
     <h1>📝 Todo List</h1>
 
-    <div class="todo-form">
+    <div class="subtitle">
+        Görevlerini kolayca takip et
+    </div>
+
+    <form class="todo-form" id="todoForm">
+
         <input
             type="text"
             id="todoInput"
             placeholder="Yeni görev yaz..."
+            autocomplete="off"
         >
-        <button id="addButton">Ekle</button>
-    </div>
+
+        <button type="submit" id="addButton">
+            Ekle
+        </button>
+
+    </form>
+
+    <div id="statusMessage"></div>
+
+    <div id="todoStats"></div>
 
     <ul id="todoList"></ul>
 
-    <script>
-        const API_URL = "https://todo-api-znqf.onrender.com";
+</div>
 
-        const input = document.getElementById("todoInput");
-        const button = document.getElementById("addButton");
-        const list = document.getElementById("todoList");
+<script>
 
-        async function loadTodos() {
-            const response = await fetch(`${API_URL}/todos`);
-            const todos = await response.json();
+const API_URL = "https://todo-api-znqf.onrender.com";
 
-            list.innerHTML = "";
+const form = document.getElementById("todoForm");
+const input = document.getElementById("todoInput");
+const button = document.getElementById("addButton");
+const list = document.getElementById("todoList");
+const statusMessage = document.getElementById("statusMessage");
+const todoStats = document.getElementById("todoStats");
 
-            todos.forEach(function (todo) {
-                const listItem = document.createElement("li");
 
-                if (todo.completed) {
-                    listItem.classList.add("completed");
-                }
+function showStatus(message, type) {
+    statusMessage.textContent = message;
+    statusMessage.className = type;
+}
 
-                const checkbox = document.createElement("input");
-                checkbox.type = "checkbox";
-                checkbox.checked = todo.completed;
 
-                checkbox.addEventListener("change", async function () {
-                    await fetch(`${API_URL}/todos/${todo.id}`, {
-                        method: "PUT",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            title: todo.title,
-                            completed: checkbox.checked
-                        })
-                    });
+function hideStatus() {
+    statusMessage.textContent = "";
+    statusMessage.className = "";
+}
 
-                    await loadTodos();
-                });
 
-                const title = document.createElement("span");
-                title.textContent = todo.title;
+async function loadTodos() {
 
-                const deleteButton = document.createElement("button");
-                deleteButton.textContent = "🗑️";
-                deleteButton.className = "delete-button";
+    showStatus("Görevler yükleniyor...", "loading");
 
-                deleteButton.addEventListener("click", async function () {
-                    await fetch(`${API_URL}/todos/${todo.id}`, {
-                        method: "DELETE"
-                    });
+    try {
 
-                    await loadTodos();
-                });
+        const response = await fetch(`${API_URL}/todos`);
 
-                listItem.appendChild(checkbox);
-                listItem.appendChild(title);
-                listItem.appendChild(deleteButton);
-
-                list.appendChild(listItem);
-            });
+        if (!response.ok) {
+            throw new Error("Görevler alınamadı.");
         }
 
-        async function addTodo() {
-            const text = input.value.trim();
+        const todos = await response.json();
 
-            if (text === "") {
-                return;
+        const totalTodos = todos.length;
+
+        const completedTodos = todos.filter(function (todo) {
+            return todo.completed;
+        }).length;
+
+        todoStats.textContent =
+            `${totalTodos} görev • ${completedTodos} tamamlandı`;
+
+        list.innerHTML = "";
+
+        todos.forEach(function (todo) {
+
+            const listItem = document.createElement("li");
+
+            if (todo.completed) {
+                listItem.classList.add("completed");
             }
 
-            await fetch(`${API_URL}/todos`, {
+
+            // CHECKBOX
+            const checkbox = document.createElement("input");
+
+            checkbox.type = "checkbox";
+            checkbox.checked = todo.completed;
+
+            checkbox.addEventListener("change", async function () {
+
+                try {
+
+                    const response = await fetch(
+                        `${API_URL}/todos/${todo.id}`,
+                        {
+                            method: "PUT",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                title: todo.title,
+                                completed: checkbox.checked
+                            })
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error("Görev güncellenemedi.");
+                    }
+
+                    await loadTodos();
+
+                } catch (error) {
+
+                    showStatus(
+                        "Görev güncellenirken bir hata oluştu.",
+                        "error"
+                    );
+
+                    checkbox.checked = todo.completed;
+                }
+
+            });
+
+
+            // BAŞLIK
+            const title = document.createElement("span");
+
+            title.textContent = todo.title;
+
+
+            // DÜZENLE
+            const editButton = document.createElement("button");
+
+            editButton.textContent = "✏️";
+            editButton.className = "edit-button";
+
+            editButton.addEventListener("click", async function () {
+
+                const newTitle = prompt(
+                    "Görevi düzenle:",
+                    todo.title
+                );
+
+                if (newTitle === null) {
+                    return;
+                }
+
+                const trimmedTitle = newTitle.trim();
+
+                if (trimmedTitle === "") {
+
+                    showStatus(
+                        "Görev boş bırakılamaz.",
+                        "error"
+                    );
+
+                    return;
+                }
+
+                try {
+
+                    const response = await fetch(
+                        `${API_URL}/todos/${todo.id}`,
+                        {
+                            method: "PUT",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                title: trimmedTitle,
+                                completed: todo.completed
+                            })
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error("Görev güncellenemedi.");
+                    }
+
+                    await loadTodos();
+
+                    showStatus(
+                        "Görev başarıyla güncellendi.",
+                        "success"
+                    );
+
+                    setTimeout(function () {
+                        hideStatus();
+                    }, 1500);
+
+                } catch (error) {
+
+                    showStatus(
+                        "Görev düzenlenirken bir hata oluştu.",
+                        "error"
+                    );
+
+                }
+
+            });
+
+
+            // SİL
+            const deleteButton = document.createElement("button");
+
+            deleteButton.textContent = "🗑️";
+            deleteButton.className = "delete-button";
+
+            deleteButton.addEventListener("click", async function () {
+
+                const confirmed = confirm(
+                    "Bu görevi silmek istediğine emin misin?"
+                );
+
+                if (!confirmed) {
+                    return;
+                }
+
+                try {
+
+                    const response = await fetch(
+                        `${API_URL}/todos/${todo.id}`,
+                        {
+                            method: "DELETE"
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error("Görev silinemedi.");
+                    }
+
+                    await loadTodos();
+
+                } catch (error) {
+
+                    showStatus(
+                        "Görev silinirken bir hata oluştu.",
+                        "error"
+                    );
+
+                }
+
+            });
+
+
+            listItem.appendChild(checkbox);
+            listItem.appendChild(title);
+            listItem.appendChild(editButton);
+            listItem.appendChild(deleteButton);
+
+            list.appendChild(listItem);
+
+        });
+
+        hideStatus();
+
+    } catch (error) {
+
+        list.innerHTML = "";
+
+        showStatus(
+            "Sunucuya bağlanılamadı. Lütfen biraz bekleyip tekrar deneyin.",
+            "error"
+        );
+
+    }
+
+}
+
+
+async function addTodo() {
+
+    const text = input.value.trim();
+
+    if (text === "") {
+
+        showStatus(
+            "Lütfen bir görev yazın.",
+            "error"
+        );
+
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Ekleniyor...";
+
+    try {
+
+        const response = await fetch(
+            `${API_URL}/todos`,
+            {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -154,17 +505,47 @@
                     title: text,
                     completed: false
                 })
-            });
+            }
+        );
 
-            input.value = "";
-
-            await loadTodos();
+        if (!response.ok) {
+            throw new Error("Görev eklenemedi.");
         }
 
-        button.addEventListener("click", addTodo);
+        input.value = "";
 
-        loadTodos();
-    </script>
+        await loadTodos();
+
+    } catch (error) {
+
+        showStatus(
+            "Görev eklenirken bir hata oluştu.",
+            "error"
+        );
+
+    } finally {
+
+        button.disabled = false;
+        button.textContent = "Ekle";
+
+    }
+
+}
+
+
+// ENTER VE EKLE BUTONU
+form.addEventListener("submit", function (event) {
+
+    event.preventDefault();
+
+    addTodo();
+
+});
+
+
+loadTodos();
+
+</script>
 
 </body>
 </html>
